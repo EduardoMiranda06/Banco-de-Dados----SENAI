@@ -15,15 +15,53 @@ data_alteracao DATETIME
 );
 
 DELIMITER $$
-CREATE TRIGGER atualizar_log_estoque
+
+CREATE TRIGGER registrar_alteracao_estoque
 AFTER UPDATE ON produtos
 FOR EACH ROW
 BEGIN
-    INSERT INTO log_estoque (id_produto, quantidade_antiga, quantidade_nova, data_alteracao)
-    VALUES (NEW.id, OLD.quantidade, NEW.quantidade, NOW());
+    -- Verifica se a quantidade foi alterada
+    IF OLD.quantidade <> NEW.quantidade THEN
+        -- Insere o registro na tabela de log
+        INSERT INTO log_estoque (id_produto, quantidade_antiga, quantidade_nova, data_alteracao)
+        VALUES (OLD.id, OLD.quantidade, NEW.quantidade, NOW());
+    END IF;
 END $$
 
 DELIMITER ;
+
+DELIMITER $$
+
+CREATE FUNCTION get_quantidade_produto(produto_id INT) RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE qtd INT;
+
+    -- Busca a quantidade atual do produto
+    SELECT quantidade INTO qtd FROM produtos WHERE id = produto_id;
+
+    RETURN qtd;
+END $$
+
+DELIMITER ;
+SELECT get_quantidade_produto(1) AS quantidade_em_estoque;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE atualiza_quantidade(IN p_id INT, IN p_nova_quantidade INT)
+BEGIN
+    -- Atualiza a quantidade do produto na tabela produtos
+    UPDATE produtos SET quantidade = p_nova_quantidade WHERE id = p_id;
+
+    -- Retorna uma mensagem de sucesso
+    SELECT 'Produto atualizado com sucesso' AS mensagem;
+END $$
+
+DELIMITER ;
+CALL atualiza_quantidade(1, 50);
+
+
 
 UPDATE produtos SET quantidade = 50 WHERE id = 1;
 SELECT * FROM log_estoque;
